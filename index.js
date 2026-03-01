@@ -1,25 +1,21 @@
 import http from 'node:http';
-import { URL } from 'node:url';
 
 const server = http.createServer(async (req, res) => {
   const reqUrl = new URL(req.url, `http://${req.headers.host}`);
   const targetSite = reqUrl.searchParams.get('url');
 
-  // 1. THE SEARCH UI
+  // Home Page
   if (!targetSite) {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(`
-      <body style="font-family:sans-serif;text-align:center;padding-top:20vh;background:#0f172a;color:white;">
-        <h1>Stealth Browser</h1>
-        <p>Enter a URL to browse privately</p>
-        <input type="text" id="urlInput" placeholder="https://neal.fun" style="padding:12px;width:300px;border-radius:5px;border:none;">
-        <button onclick="go()" style="padding:12px;cursor:pointer;border-radius:5px;background:#3b82f6;color:white;border:none;margin-left:5px;">Launch</button>
+      <body style="font-family:sans-serif;text-align:center;padding-top:20vh;background:#000;color:white;">
+        <h1>Cloud Browser</h1>
+        <input type="text" id="urlInput" placeholder="https://google.com" style="padding:10px;width:300px;">
+        <button onclick="go()">Launch</button>
         <script>
           function go() {
-            const val = document.getElementById('urlInput').value;
-            if(!val) return;
-            const url = val.startsWith('http') ? val : 'https://' + val;
-            window.location.href = '/?url=' + encodeURIComponent(url);
+            const v = document.getElementById('urlInput').value;
+            window.location.href = '/?url=' + encodeURIComponent(v.includes('://') ? v : 'https://' + v);
           }
         </script>
       </body>
@@ -27,22 +23,24 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 2. THE PROXY LOGIC
+  // The Proxy Logic (Server-Side)
   try {
-    // We use a public bridge to bypass most school/work blocks
-    const proxiedUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetSite);
-    const response = await fetch(proxiedUrl);
+    console.log("Fetching:", targetSite);
+    const response = await fetch(targetSite, {
+      headers: { 'User-Agent': 'Mozilla/5.0' } // Pretend to be a real browser
+    });
+    
     const html = await response.text();
     
+    // Send the HTML back to your device
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
-  } catch (err) {
-    res.writeHead(500);
-    res.end("Error loading site: " + err.message);
+  } catch (e) {
+    res.end("Could not load site: " + e.message);
   }
 });
 
-// Port 3000 is the standard for Replit/Glitch/Render
-server.listen(3000, () => {
-  console.log('✅ SERVER STARTED ON PORT 3000');
+// Port 10000 is Render's default, but 3000 works too
+server.listen(process.env.PORT || 3000, () => {
+  console.log('✅ PROXY ACTIVE');
 });
